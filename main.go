@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"log"
 
 	"os"
@@ -38,7 +40,9 @@ const BOT_NAME = 1
 const USER_ID = 2
 
 func main() {
-	data, err := os.ReadFile("credentials.txt")
+	exe_dir = get_exe_dir()
+
+	data, err := os.ReadFile(exe_dir + "credentials.txt")
 	if err != nil {
 		log.Println("Error:", err.Error())
 	}
@@ -77,11 +81,12 @@ func main() {
 }
 
 func get_exe_dir() string {
-
+	exe_path, _ := os.Executable()
+	return filepath.Dir(exe_path) + "/"
 }
 
 func load_messages(msg_type string) (time.Time, []string) {
-	path := "messages/" + msg_type
+	path := exe_dir + "messages/" + msg_type
 	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Println("Error:", err.Error())

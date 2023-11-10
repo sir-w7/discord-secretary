@@ -6,6 +6,10 @@
 3. Run executable.
 
 # NOTE: More work is needed in this section.
-How to use more message lists (more technical):
+## How to use more message lists (more technical):
 1. Change directory to main.exe working directory.
 2. Run "main.exe [the name of the message file without its parent directory]"
+
+# TODO
+Code is fairly outdated (written early 2022), so it still processes tags, which is now redundant and potentially buggy.
+
