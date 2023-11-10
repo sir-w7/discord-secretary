@@ -15,5 +15,5 @@ zip -r bot_darwin_arm64.zip bot_darwin_arm64 credentials.txt messages README.md
 
 mkdir -p build
 
-rm bot_win32_amd64.exe bot_darwin_amd64 bot_darwin_arm64
+mv bot_win32_amd64.exe bot_darwin_amd64 bot_darwin_arm64 build/
 mv *.zip build/

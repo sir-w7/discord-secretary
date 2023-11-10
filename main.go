@@ -21,17 +21,17 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var exe_dir string
+var exeDir string
 
-var message_list []string
-var last_loaded time.Time
+var messageList []string
+var lastLoaded time.Time
 
 var credentials []string
 
-var message_mode string
+var messageMode string
 
-var user_last_msg = make(map[string]time.Time)
-var channel_owner_at = make(map[string]time.Time)
+var userLastMsg = make(map[string]time.Time)
+var channelOwnerAt = make(map[string]time.Time)
 
 var mutex sync.Mutex
 
@@ -40,9 +40,10 @@ const BOT_NAME = 1
 const USER_ID = 2
 
 func main() {
-	exe_dir = get_exe_dir()
+	exeDir = getExeDir()
+	fmt.Println(exeDir)
 
-	data, err := os.ReadFile(exe_dir + "credentials.txt")
+	data, err := os.ReadFile(exeDir + "credentials.txt")
 	if err != nil {
 		log.Println("Error:", err.Error())
 	}
@@ -55,14 +56,14 @@ func main() {
 		return
 	}
 	if len(os.Args) > 1 {
-		message_mode = os.Args[1]
+		messageMode = os.Args[1]
 	} else {
-		message_mode = "idle_messages.txt"
+		messageMode = "idle_messages.txt"
 	}
-	fmt.Println("Selected " + message_mode + " message list.")
-	last_loaded, message_list = load_messages(message_mode)
+	fmt.Println("Selected " + messageMode + " message list.")
+	lastLoaded, messageList = loadMessages(messageMode)
 
-	discord.AddHandler(message_create)
+	discord.AddHandler(messageCreate)
 
 	err = discord.Open()
 	if err != nil {
@@ -80,28 +81,28 @@ func main() {
 	log.Println(credentials[BOT_NAME], "has left the chat.")
 }
 
-func get_exe_dir() string {
-	exe_path, _ := os.Executable()
-	return filepath.Dir(exe_path) + "/"
+func getExeDir() string {
+	exePath, _ := os.Executable()
+	return filepath.Dir(exePath) + "/"
 }
 
-func load_messages(msg_type string) (time.Time, []string) {
-	path := exe_dir + "messages/" + msg_type
+func loadMessages(msgType string) (time.Time, []string) {
+	path := exeDir + "messages/" + msgType
 	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Println("Error:", err.Error())
 		return time.Time{}, nil
 	}
 
-	return file_last_mod(path), strings.Split(string(data), "\n\n")
+	return fileLastMod(path), strings.Split(string(data), "\n\n")
 }
 
-func file_last_mod(path string) time.Time {
+func fileLastMod(path string) time.Time {
 	inf, _ := os.Stat(path)
 	return inf.ModTime()
 }
 
-func is_dm(session *discordgo.Session, msg *discordgo.MessageCreate) (bool, error) {
+func isDm(session *discordgo.Session, msg *discordgo.MessageCreate) (bool, error) {
 	channel, err := session.State.Channel(msg.ChannelID)
 	if err != nil {
 		if channel, err = session.Channel(msg.ChannelID); err != nil {
@@ -122,8 +123,8 @@ func is_dm(session *discordgo.Session, msg *discordgo.MessageCreate) (bool, erro
 	return false, nil
 }
 
-func message_create(session *discordgo.Session, msg *discordgo.MessageCreate) {
-	dm, err := is_dm(session, msg)
+func messageCreate(session *discordgo.Session, msg *discordgo.MessageCreate) {
+	dm, err := isDm(session, msg)
 	if err != nil {
 		fmt.Println("Failed to check channel type.")
 		fmt.Println("Error:", err.Error())
@@ -138,27 +139,35 @@ func message_create(session *discordgo.Session, msg *discordgo.MessageCreate) {
 	defer mutex.Unlock()
 
 	if msg.Author.ID == session.State.User.ID {
-		channel_owner_at[msg.ChannelID] = time.Now()
+		channelOwnerAt[msg.ChannelID] = time.Now()
 		return
 	}
 
-	if last_loaded != file_last_mod("messages/"+message_mode) {
-		last_loaded, message_list = load_messages(message_mode)
-		fmt.Println("Reloaded " + message_mode + " message list")
+	if lastLoaded != fileLastMod("messages/"+messageMode) {
+		lastLoaded, messageList = loadMessages(messageMode)
+		fmt.Println("Reloaded " + messageMode + " message list")
 	}
 
-	user := msg.Author.Username + "#" + msg.Author.Discriminator
-	if (user_last_msg[user].IsZero() || time.Since(user_last_msg[user]) > 5*time.Minute) &&
-		(channel_owner_at[msg.ChannelID].IsZero() || time.Since(channel_owner_at[msg.ChannelID]) > 3*time.Minute) {
+	user := msg.Author.Username
+
+	if time.Since(userLastMsg[user]) > 3*time.Minute || userLastMsg[user].IsZero() {
 		log.Println("Message from:", user)
 
-		session.ChannelTyping(msg.ChannelID)
-		time.Sleep(5 * time.Second)
-		session.ChannelMessageSend(msg.ChannelID, message_list[rand.Intn(len(message_list))])
+		sendRandMessage(session, msg)
+		sendMessage(session, msg)
 
-		time.Sleep(2 * time.Second)
-		session.ChannelMessageSend(msg.ChannelID, "- Best wishes, "+credentials[BOT_NAME])
-
-		user_last_msg[user] = time.Now()
+		userLastMsg[user] = time.Now()
 	}
+}
+
+func sendRandMessage(session *discordgo.Session, msg *discordgo.MessageCreate) {
+	session.ChannelTyping(msg.ChannelID)
+	time.Sleep(2 * time.Second)
+	session.ChannelMessageSend(msg.ChannelID, messageList[rand.Intn(len(messageList))])
+}
+
+func sendMessage(session *discordgo.Session, msg *discordgo.MessageCreate) {
+	session.ChannelTyping(msg.ChannelID)
+	time.Sleep(1 * time.Second)
+	session.ChannelMessageSend(msg.ChannelID, "\\- Best wishes, "+credentials[BOT_NAME])
 }
